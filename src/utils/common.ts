@@ -44,3 +44,25 @@ export function bundleIxsIntoTxArray(
 
   return transactions;
 }
+
+export async function filterInitializedAddresses(
+  connection: Connection,
+  addresses: PublicKey[]
+) {
+  const promises = [];
+
+  // getMultipleAccountInfo in chunks of 20
+  for (let i = 0; i < addresses.length; i += 20) {
+    promises.push(
+      connection.getMultipleAccountsInfo(addresses.slice(i, i + 20), {
+        commitment: "processed",
+      })
+    );
+  }
+  const accountData = await Promise.all(promises);
+
+  if (accountData)
+    return accountData.reduce((data, value) => data.concat(value), []);
+
+  return [];
+}

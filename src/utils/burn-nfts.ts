@@ -1,21 +1,35 @@
-import { Connection, PublicKey, Transaction } from "@solana/web3.js";
+import {
+  Connection,
+  PublicKey,
+  Transaction,
+  TransactionInstruction,
+} from "@solana/web3.js";
 import { getMetadataPda, getMasterEditionPda } from "./metaplex";
 import {
   createBurnNftInstruction,
   PROGRAM_ADDRESS,
 } from "@metaplex-foundation/mpl-token-metadata";
-import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import {
+  createBurnInstruction,
+  createCloseAccountInstruction,
+  getAssociatedTokenAddress,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 import { HeliusNFTData } from "../types";
-import { bundleIxsIntoTxArray, finalizeTransactions } from "./common";
+import {
+  bundleIxsIntoTxArray,
+  filterInitializedAddresses,
+  finalizeTransactions,
+} from "./common";
 
 const _mplProgramId = new PublicKey(PROGRAM_ADDRESS);
 
-// TODO Remove this once Helius fixes their API
-export async function verifyCollectionAddresses(
+async function getVerifiedAddresses(
   connection: Connection,
   nfts: Pick<HeliusNFTData, "tokenAddress" | "collectionAddress">[]
 ) {
-  const addresses = nfts
+  // collate all addresses needed to be queried
+  const collectionAddresses = nfts
     .reduce((addresses, value) => {
       if (!addresses.includes(value.collectionAddress))
         addresses.push(value.collectionAddress);
@@ -23,18 +37,28 @@ export async function verifyCollectionAddresses(
     }, [] as string[])
     .map((address) => getMetadataPda(new PublicKey(address)));
 
-  const accountData = await connection.getMultipleAccountsInfo(addresses);
+  const editionAddresses = nfts.map((nft) =>
+    getMasterEditionPda(new PublicKey(nft.tokenAddress))
+  );
 
-  const verifiedAddresses: PublicKey[] = [];
+  // get account data of compiled addresses
+  const accountData = await filterInitializedAddresses(connection, [
+    ...collectionAddresses,
+    ...editionAddresses,
+  ]);
 
-  // filter initialized accounts
-  if (accountData) {
-    addresses.forEach((address, index) => {
-      if (accountData[index] !== null) verifiedAddresses.push(address);
-    });
-  }
+  const collectionData = accountData.slice(0, collectionAddresses.length);
+  const editionData = accountData.slice(
+    collectionAddresses.length,
+    collectionAddresses.length + editionAddresses.length
+  );
 
-  return verifiedAddresses;
+  return {
+    collection: collectionAddresses.filter(
+      (_, idx) => collectionData[idx] !== null
+    ),
+    edition: editionAddresses.filter((_, idx) => editionData[idx] !== null),
+  };
 }
 
 export async function createBurnNftTxs(
@@ -42,29 +66,48 @@ export async function createBurnNftTxs(
   payer: PublicKey,
   nfts: Pick<HeliusNFTData, "tokenAddress" | "collectionAddress">[]
 ): Promise<Transaction[]> {
-  const verifiedAddresses = await verifyCollectionAddresses(connection, nfts);
+  const { collection, edition } = await getVerifiedAddresses(connection, nfts);
 
   // create burn nft ixs per nft selected
-  const burnNftIxs = await Promise.all(
-    nfts.map(async (nft) => {
-      const collectionMetadataPda = getMetadataPda(
-        new PublicKey(nft.collectionAddress)
+  const burnNftIxs: TransactionInstruction[] = [];
+  const burnTokenIxs: TransactionInstruction[] = [];
+
+  for (let i = 0; i < nfts.length; i++) {
+    const mint = new PublicKey(nfts[i].tokenAddress);
+    const editionPda = getMasterEditionPda(mint);
+    const tokenAccount = await getAssociatedTokenAddress(mint, payer);
+
+    // if master edition pda is initialized, then its a verified nft
+    // which means we can full burn via metaplex contract
+    if (edition.findIndex((value) => value.equals(editionPda)) > -1) {
+      const collectionPda = getMetadataPda(
+        new PublicKey(nfts[i].collectionAddress)
       );
 
-      return await burnNft(
-        payer,
-        new PublicKey(nft.tokenAddress),
-        verifiedAddresses.findIndex((address) =>
-          address.equals(collectionMetadataPda)
-        ) > -1
-          ? collectionMetadataPda
-          : undefined
+      burnNftIxs.push(
+        burnNft(
+          payer,
+          new PublicKey(mint),
+          editionPda,
+          tokenAccount,
+          collection.findIndex((address) => address.equals(collectionPda)) > -1
+            ? collectionPda
+            : undefined
+        )
       );
-    })
+    } else {
+      // else, we can only burn it the traditional way
+      burnTokenIxs.push(...burnToken(payer, tokenAccount, mint));
+    }
+  }
+
+  const burnTxs: Transaction[] = bundleIxsIntoTxArray(burnNftIxs, 6);
+  const burnTokenTxs: Transaction[] = bundleIxsIntoTxArray(burnTokenIxs, 11);
+  return await finalizeTransactions(
+    connection,
+    [...burnTxs, ...burnTokenTxs],
+    payer
   );
-
-  const transactions: Transaction[] = bundleIxsIntoTxArray(burnNftIxs, 6);
-  return await finalizeTransactions(connection, transactions, payer);
 }
 
 /**
@@ -76,14 +119,16 @@ export async function createBurnNftTxs(
  * @param collectionMint collection mint of the nft, if any
  * @returns
  */
-export async function burnNft(
+export function burnNft(
   owner: PublicKey,
   mint: PublicKey,
+  masterEditionPda: PublicKey,
+  tokenAccount: PublicKey,
   collectionMetadataPda?: PublicKey
 ) {
   const mintMetadataPda = getMetadataPda(mint);
-  const masterEditionPda = getMasterEditionPda(mint);
-  const tokenAccount = await getAssociatedTokenAddress(mint, owner);
+  // const masterEditionPda = getMasterEditionPda(mint);
+  // const tokenAccount = await getAssociatedTokenAddress(mint, owner);
   // const collectionMetadataPda = collectionMint
   //   ? getMetadataPda(collectionMint)
   //   : undefined;
@@ -101,4 +146,15 @@ export async function burnNft(
     },
     _mplProgramId
   );
+}
+
+export function burnToken(
+  owner: PublicKey,
+  account: PublicKey,
+  mint: PublicKey
+): TransactionInstruction[] {
+  return [
+    createBurnInstruction(account, mint, owner, 1),
+    createCloseAccountInstruction(account, owner, owner),
+  ];
 }
