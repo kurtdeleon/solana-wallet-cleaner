@@ -62,8 +62,8 @@ export const FAQDialog: FC<Props> = ({ open, handleClose }) => {
     >
       <DialogTitle>{"Frequently Asked Questions"}</DialogTitle>
       <DialogContent dividers={true}>
-        {FAQ_LIST.map((faq) => (
-          <>
+        {FAQ_LIST.map((faq, index) => (
+          <div key={`faq-${index}`}>
             <Typography
               variant="h4"
               fontSize="16px"
@@ -73,7 +73,7 @@ export const FAQDialog: FC<Props> = ({ open, handleClose }) => {
               {faq.question}
             </Typography>
             <Answer dangerouslySetInnerHTML={{ __html: faq.answer }} />
-          </>
+          </div>
         ))}
       </DialogContent>
       <DialogActions>
