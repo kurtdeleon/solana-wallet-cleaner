@@ -9,8 +9,8 @@ export async function getNftMetadata(mintAccounts: string[]) {
   ).then((data) => data.json());
 }
 
-export async function getNftPortfolio(wallet: string) {
+export async function getNftPortfolio(wallet: string, page: number = 1) {
   return fetch(
-    `https://api.helius.xyz/v0/addresses/${wallet}/nfts?api-key=${process.env.REACT_APP_HELIUS_API_KEY}`
+    `https://api.helius.xyz/v0/addresses/${wallet}/nfts?api-key=${process.env.REACT_APP_HELIUS_API_KEY}&pageNumber=${page}`
   ).then((data) => data.json());
 }

@@ -95,6 +95,26 @@ function Burner() {
     setPortfolioData({});
     setFetching(true);
     const nftData: HeliusNFTPortfolio = await getNftPortfolio(wallet);
+
+    if (!nftData) {
+      enqueueSnackbar("Error fetching NFTs 💀", { variant: "error" });
+    }
+
+    // fetch all of the user's NFTs
+    if (nftData && nftData.numberOfPages > 1) {
+      const restOfData: HeliusNFTPortfolio[] = await Promise.all(
+        Array.from({ length: nftData.numberOfPages }, (_, i) => i++)
+          .splice(1)
+          .map(async (page) => await getNftPortfolio(wallet, page))
+      );
+      if (restOfData) {
+        restOfData.forEach((data) => {
+          nftData.nfts.push(...data.nfts);
+        });
+      } else {
+        enqueueSnackbar("Error fetching all NFTs 💀", { variant: "error" });
+      }
+    }
     if (nftData.nfts) {
       const groupedNftData = nftData.nfts.reduce(function (group, value) {
         if (!group[value.collectionAddress]) {
