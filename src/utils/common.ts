@@ -6,11 +6,12 @@ import {
 } from "@solana/web3.js";
 
 export function shortenAddress(address: string) {
-  if (PublicKey.isOnCurve(address))
+  if (address.length > 4) {
     return (
       address.substring(0, 4) + "..." + address.substring(address.length - 4)
     );
-  else throw Error("Invalid address");
+  }
+  return address;
 }
 
 export async function finalizeTransactions(
