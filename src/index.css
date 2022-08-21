@@ -11,3 +11,20 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+#root {
+  max-height: 100vh;
+  max-width: 100vw;
+}
+
+.wallet-adapter-button {
+  height: 32px !important;
+  line-height: 32px !important;
+  font-size: 14px !important;
+  padding: 0 16px !important;
+}
+
+.wallet-adapter-button .wallet-adapter-button-start-icon img {
+  height: 18px !important;
+  width: 18px !important;
+}
