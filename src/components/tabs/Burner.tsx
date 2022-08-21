@@ -103,17 +103,33 @@ function Burner() {
 
     // fetch all of the user's NFTs
     if (nftData && nftData.numberOfPages > 1) {
-      const restOfData: HeliusNFTPortfolio[] = await Promise.all(
-        Array.from({ length: nftData.numberOfPages }, (_, i) => i++)
-          .splice(1)
+      // get all other pages starting from page 2
+      const rawData: PromiseSettledResult<
+        HeliusNFTPortfolio | { error: string }
+      >[] = await Promise.allSettled(
+        Array.from({ length: nftData.numberOfPages }, (_, i) => ++i)
+          .slice(1)
           .map(async (page) => await getNftPortfolio(wallet, page))
       );
-      if (restOfData) {
-        restOfData.forEach((data) => {
-          nftData.nfts.push(...data.nfts);
+
+      // filter responses to those with actual nft data
+      const restOfData: HeliusNFTPortfolio[] = (
+        rawData.filter(
+          (data) =>
+            data.status === "fulfilled" && data.value.hasOwnProperty("nfts")
+        ) as PromiseFulfilledResult<HeliusNFTPortfolio>[]
+      ).map((data) => data.value);
+
+      // collate nft data to nftData.nft
+      restOfData.forEach((data) => {
+        nftData.nfts.push(...data.nfts);
+      });
+
+      // show error if needed
+      if (restOfData.length + 1 < nftData.numberOfPages) {
+        enqueueSnackbar("Couldn't fetch all NFTs. Probably got rate-limited.", {
+          variant: "warning",
         });
-      } else {
-        enqueueSnackbar("Error fetching all NFTs 💀", { variant: "error" });
       }
     }
     if (nftData.nfts) {
