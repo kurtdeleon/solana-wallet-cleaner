@@ -65,13 +65,14 @@ const SmallAction = styled("button")({
 
 export const ErrorMessage = (
   <span>
-    Something went wrong. Feel free to send the failed transaction links to{" "}
+    Something went wrong. Let me know on{" "}
     <a
       href="https://twitter.com/i__am__water"
       target="_blank"
       rel="noopener noreferrer"
+      style={{ color: "white", fontWeight: "bold", textDecoration: "none" }}
     >
-      me on Twitter
+      Twitter
     </a>
     .
   </span>
@@ -234,7 +235,12 @@ function Burner() {
           })
           .finally(() => setBurning(false));
       } catch (error) {
-        enqueueSnackbar(ErrorMessage, { variant: "error" });
+        if (
+          error instanceof Error &&
+          !error.message.startsWith("User rejected the request.")
+        ) {
+          enqueueSnackbar(ErrorMessage, { variant: "error" });
+        }
         setBurning(false);
       }
     }

@@ -50,13 +50,14 @@ const RefreshButton = styled("button")({
 
 export const ErrorMessage = (
   <span>
-    Something went wrong. Feel free to send the failed transaction links to{" "}
+    Something went wrong. Let me know on{" "}
     <a
       href="https://twitter.com/i__am__water"
       target="_blank"
       rel="noopener noreferrer"
+      style={{ color: "white", fontWeight: "bold", textDecoration: "none" }}
     >
-      me on Twitter
+      Twitter
     </a>
     .
   </span>
@@ -155,8 +156,13 @@ function AccountCloser() {
             refreshTokenAccounts(wallet.publicKey!);
             setClosing(false);
           });
-      } catch (err) {
-        enqueueSnackbar(ErrorMessage, { variant: "error" });
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          !error.message.startsWith("User rejected the request.")
+        ) {
+          enqueueSnackbar(ErrorMessage, { variant: "error" });
+        }
         setClosing(false);
       }
     }
