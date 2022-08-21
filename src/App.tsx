@@ -6,10 +6,13 @@ import {
   WalletProvider,
 } from "@solana/wallet-adapter-react";
 import {
-  GlowWalletAdapter,
   PhantomWalletAdapter,
-  SlopeWalletAdapter,
   SolflareWalletAdapter,
+  SolletWalletAdapter,
+  GlowWalletAdapter,
+  SlopeWalletAdapter,
+  TorusWalletAdapter,
+  ExodusWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { useMemo } from "react";
@@ -41,10 +44,13 @@ function App() {
 
   const wallets = useMemo(
     () => [
-      new GlowWalletAdapter(),
+      new SolflareWalletAdapter(),
       new PhantomWalletAdapter(),
       new SlopeWalletAdapter(),
-      new SolflareWalletAdapter(),
+      new GlowWalletAdapter(),
+      new SolletWalletAdapter(),
+      new TorusWalletAdapter(),
+      new ExodusWalletAdapter(),
     ],
     []
   );
