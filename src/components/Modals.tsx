@@ -22,14 +22,14 @@ export const InitialWarningDialog: FC<Props> = ({ open, handleClose }) => {
       aria-describedby="warning-dialog"
     >
       <DialogTitle>{"Use with caution"}</DialogTitle>
-      <DialogContent dividers={true}>
-        <DialogContentText id="warning-dialog-description">
-          <p>
-            This website has not been fully tested yet and the API used by this
-            service is still in beta. Please be advised that the owner will not
-            be liable for any accidents that may happen.
-          </p>
-          <p>Only use burner wallets which don't contain any valuable NFTs.</p>
+      <DialogContent>
+        <DialogContentText marginBottom="12px">
+          This website has not been fully tested yet and the API used by this
+          service is still in beta. Please be advised that the owner will not be
+          liable for any accidents that may happen.
+        </DialogContentText>
+        <DialogContentText>
+          Only use burner wallets which don't contain any valuable NFTs.
         </DialogContentText>
       </DialogContent>
       <DialogActions>
