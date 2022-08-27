@@ -1,10 +1,13 @@
+import { FC, useState } from "react";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
-import { FC } from "react";
+import FormGroup from "@mui/material/FormGroup";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Checkbox from "@mui/material/Checkbox";
 import { Typography, styled } from "@mui/material";
 import { FAQ_LIST } from "../utils/";
 
@@ -14,6 +17,9 @@ interface Props {
 }
 
 export const InitialWarningDialog: FC<Props> = ({ open, handleClose }) => {
+  const [confirmed, setConfirmed] = useState<boolean>(false);
+  const [neverShow, setNeverShow] = useState<boolean>(false);
+
   return (
     <Dialog
       open={open}
@@ -31,17 +37,43 @@ export const InitialWarningDialog: FC<Props> = ({ open, handleClose }) => {
         <DialogContentText>
           Only use burner wallets which don't contain any valuable NFTs.
         </DialogContentText>
+        <FormGroup sx={{ marginTop: "16px" }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                sx={{ paddingY: "4px" }}
+                size="small"
+                checked={confirmed}
+                onChange={(event) => setConfirmed(event.target.checked)}
+              />
+            }
+            label="I understand the risks"
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                sx={{ paddingY: "4px" }}
+                size="small"
+                checked={neverShow}
+                onChange={(event) => setNeverShow(event.target.checked)}
+              />
+            }
+            label="Never show again"
+          />
+        </FormGroup>
       </DialogContent>
       <DialogActions>
         <Button
+          disabled={!confirmed}
           onClick={() => {
-            localStorage.setItem("solanaWalletCleanerDialog", "true");
+            if (neverShow) {
+              localStorage.setItem("solanaWalletCleanerDialog", "true");
+            }
             handleClose();
           }}
         >
-          Don't show again
+          Continue
         </Button>
-        <Button onClick={handleClose}>I understand</Button>
       </DialogActions>
     </Dialog>
   );

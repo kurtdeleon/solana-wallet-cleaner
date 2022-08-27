@@ -94,7 +94,7 @@ function Home() {
           fontSize={30}
           align="center"
         >
-          Solana Wallet Cleaner
+          Solana Wallet Tools
         </Typography>
         <Typography align="center">
           Burn NFTs and close token accounts for more SOL to mint rugs with.{" "}
@@ -147,6 +147,7 @@ function Home() {
           >
             <StyledTab label="Burn NFTs" />
             <StyledTab label="Close token accounts" />
+            {/* <StyledTab label="Send NFTs" /> */}
           </StyledTabs>
         </Box>
         <TabPanel id={0} hidden={page !== 0}>
@@ -155,6 +156,9 @@ function Home() {
         <TabPanel id={1} hidden={page !== 1}>
           <AccountCloser />
         </TabPanel>
+        {/* <TabPanel id={2} hidden={page !== 2}>
+          <Burner />
+        </TabPanel> */}
       </Paper>
     </Box>
   );
