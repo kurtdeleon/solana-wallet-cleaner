@@ -216,7 +216,7 @@ function Burner() {
               enqueueSnackbar(
                 `Successfully burned ${mintsToClear.length} NFT${
                   mintsToClear.length > 1 ? "s" : ""
-                }`,
+                }! 🤑`,
                 {
                   variant: "success",
                 }
@@ -233,7 +233,7 @@ function Burner() {
                 <>
                   {idx > 0 && `, `}
                   <TxExplorerLink signature={tx} key={tx}>
-                    {idx}
+                    {idx + 1}
                   </TxExplorerLink>
                 </>
               ));
