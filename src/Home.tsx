@@ -41,6 +41,7 @@ const StyledTabs = styled((props: StyledTabsProps) => (
 
 interface StyledTabProps {
   label: string;
+  disabled?: boolean;
 }
 
 const StyledTab = styled((props: StyledTabProps) => (
@@ -62,6 +63,10 @@ const StyledTab = styled((props: StyledTabProps) => (
   },
   "&.Mui-focusVisible": {
     backgroundColor: "rgba(100, 95, 228, 0.32)",
+  },
+  ":disabled": {
+    color: "#a4a9c26f",
+    cursor: "not-allowed",
   },
 }));
 
@@ -147,7 +152,7 @@ function Home() {
           >
             <StyledTab label="Burn NFTs" />
             <StyledTab label="Close token accounts" />
-            {/* <StyledTab label="Send NFTs" /> */}
+            <StyledTab label="Multi-send NFTs (Soon)" disabled={true} />
           </StyledTabs>
         </Box>
         <TabPanel id={0} hidden={page !== 0}>
