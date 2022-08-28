@@ -13,9 +13,8 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import { AccountCard } from "../AccountCard";
 import { CONFIRM_DIALOG_TEXT } from "../../utils";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { useSnackbar } from "notistack";
-
-const solPerAcc = 0.00203428;
+import { SnackbarKey, useSnackbar } from "notistack";
+import { SOL_PER_ACC } from "../../utils";
 
 const AccountsContainer = styled(Box)({
   height: "100%",
@@ -104,65 +103,117 @@ function AccountCloser() {
   // handler for "Close All Token Accounts" button
   const handleCloseAccounts = async (emptyAccounts: PublicKey[]) => {
     if (!wallet.signAllTransactions) throw Error("Wallet adapter error");
+    if (emptyAccounts.length === 0) throw Error("No accounts selected");
 
     if (
-      wallet &&
       connection &&
       wallet.publicKey &&
       window.confirm(CONFIRM_DIALOG_TEXT) === true
     ) {
       // create close account instructions
-      const closeAccountTxs = await createCloseAccountTxs(
+      const closeTxs = await createCloseAccountTxs(
         connection,
         emptyAccounts,
         wallet.publicKey
       );
 
+      let sendNotifKey: SnackbarKey = "";
+
       try {
         setClosing(true);
 
-        // sign transactions
-        await wallet.signAllTransactions(closeAccountTxs);
+        // sign all transactions
+        await wallet.signAllTransactions(closeTxs.map((tx) => tx.transaction));
 
-        const key = enqueueSnackbar(`Sending transactions...`);
+        // tell users that transactions are being sent
+        // call closeSnackbar(key) to close the notification
+        sendNotifKey = enqueueSnackbar(
+          `Sending ${closeTxs.length} transaction${
+            closeTxs.length > 0 ? "s" : ""
+          }...`,
+          {
+            persist: true,
+          }
+        );
 
         // send all transactions once signed
-        await Promise.all(
-          closeAccountTxs.map(
-            async (tx) =>
-              await sendAndConfirmRawTransaction(connection, tx, {
-                skipPreflight: false,
-                preflightCommitment: "processed",
-                maxRetries: 2,
-              })
+        await Promise.allSettled(
+          closeTxs.map(
+            async (payload) =>
+              await sendAndConfirmRawTransaction(
+                connection,
+                payload.transaction,
+                {
+                  skipPreflight: false,
+                  preflightCommitment: "processed",
+                  maxRetries: 2,
+                }
+              )
           )
         )
           .then((signatures) => {
-            closeSnackbar(key);
-            enqueueSnackbar(
-              `Successfully closed ${emptyAccounts.length} accounts. ✨`,
-              {
-                variant: "success",
-              }
-            );
             console.log("Signatures", signatures);
+
+            const { accountsCleared, accountsFailed, failed } =
+              signatures.reduce(
+                (data, result, index) => {
+                  if (result.status === "fulfilled") {
+                    data.accountsCleared.push(...closeTxs[index].addresses);
+                  } else {
+                    data.accountsFailed.push(...closeTxs[index].addresses);
+                    data.failed.push(result.reason);
+                  }
+                  return data;
+                },
+                { accountsCleared: [], accountsFailed: [], failed: [] } as {
+                  accountsCleared: string[];
+                  accountsFailed: string[];
+                  failed: string[];
+                }
+              );
+
+            // close "Sending Transactions" notifications
+            closeSnackbar(sendNotifKey);
+
+            // show number of successfully burned NFTs, if any
+            if (accountsCleared.length > 0) {
+              enqueueSnackbar(
+                `Successfully burned ${accountsCleared.length} NFT${
+                  accountsCleared.length > 1 ? "s" : ""
+                }`,
+                {
+                  variant: "success",
+                }
+              );
+            }
+
+            // show number of failed to burn NFTs, if any
+            if (accountsFailed.length > 0) {
+              const mainText = `Failed to burned ${accountsFailed.length} NFT${
+                accountsFailed.length > 1 ? "s" : ""
+              }. TXs: `;
+              //TODO add tx links here
+              // failed.map((tx, idx)=><TxExplorerLink signature={tx} key={tx}>{idx}</TxExplorerLink> )
+              enqueueSnackbar(<span>{mainText}</span>, {
+                variant: "error",
+              });
+            }
           })
           .catch((err) => {
-            closeSnackbar(key);
+            closeSnackbar(sendNotifKey);
             enqueueSnackbar(ErrorMessage, { variant: "error" });
             console.error("Error:", err);
-          })
-          .finally(() => {
-            refreshTokenAccounts(wallet.publicKey!);
-            setClosing(false);
           });
       } catch (error) {
+        closeSnackbar(sendNotifKey);
         if (
           error instanceof Error &&
           !error.message.startsWith("User rejected the request.")
         ) {
           enqueueSnackbar(ErrorMessage, { variant: "error" });
         }
+      } finally {
+        await refreshTokenAccounts(wallet.publicKey!);
         setClosing(false);
       }
     }
@@ -176,7 +227,7 @@ function AccountCloser() {
             ? `You have ${
                 emptyAccounts.length
               } empty token account(s), which should net you around ~${(
-                emptyAccounts.length * solPerAcc
+                emptyAccounts.length * SOL_PER_ACC
               ).toFixed(4)} SOL.`
             : "Connect your wallet first to start burning NFTs."}
         </Typography>

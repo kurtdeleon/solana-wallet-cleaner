@@ -4,3 +4,4 @@ export * from "./close-token-account";
 export * from "./common";
 export * from "./send-transaction";
 export * from "./constants";
+export * from "./icons";

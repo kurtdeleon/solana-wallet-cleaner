@@ -57,8 +57,15 @@ function App() {
 
   return (
     <ThemeProvider theme={theme}>
-      <ConnectionProvider endpoint="https://ssc-dao.genesysgo.net/">
-        <WalletProvider wallets={wallets} autoConnect={true}>
+      <ConnectionProvider
+        endpoint="https://ssc-dao.genesysgo.net/"
+        config={{
+          confirmTransactionInitialTimeout: 30000,
+          commitment: "processed",
+          disableRetryOnRateLimit: true,
+        }}
+      >
+        <WalletProvider wallets={wallets} autoConnect>
           <WalletModalProvider>
             <SnackbarProvider maxSnack={5}>
               <InitialWarningDialog

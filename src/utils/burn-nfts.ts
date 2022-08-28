@@ -1,9 +1,4 @@
-import {
-  Connection,
-  PublicKey,
-  Transaction,
-  TransactionInstruction,
-} from "@solana/web3.js";
+import { Connection, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { getMetadataPda, getMasterEditionPda } from "./metaplex";
 import {
   createBurnNftInstruction,
@@ -15,7 +10,11 @@ import {
   getAssociatedTokenAddress,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { HeliusNFTData } from "../types";
+import {
+  HeliusNFTData,
+  InstructionPayload,
+  TransactionPayload,
+} from "../types";
 import {
   bundleIxsIntoTxArray,
   filterInitializedAddresses,
@@ -65,12 +64,12 @@ export async function createBurnNftTxs(
   connection: Connection,
   payer: PublicKey,
   nfts: Pick<HeliusNFTData, "tokenAddress" | "collectionAddress">[]
-): Promise<Transaction[]> {
+): Promise<TransactionPayload[]> {
   const { collection, edition } = await getVerifiedAddresses(connection, nfts);
 
   // create burn nft ixs per nft selected
-  const burnNftIxs: TransactionInstruction[] = [];
-  const burnTokenIxs: TransactionInstruction[] = [];
+  const burnNftPayloads: InstructionPayload[] = [];
+  const burnTokenPayloads: InstructionPayload[] = [];
 
   for (let i = 0; i < nfts.length; i++) {
     const mint = new PublicKey(nfts[i].tokenAddress);
@@ -84,28 +83,36 @@ export async function createBurnNftTxs(
         new PublicKey(nfts[i].collectionAddress)
       );
 
-      burnNftIxs.push(
-        burnNft(
-          payer,
-          new PublicKey(mint),
-          editionPda,
-          tokenAccount,
-          collection.findIndex((address) => address.equals(collectionPda)) > -1
-            ? collectionPda
-            : undefined
-        )
+      const burnIx = burnNft(
+        payer,
+        mint,
+        editionPda,
+        tokenAccount,
+        collection.findIndex((address) => address.equals(collectionPda)) > -1
+          ? collectionPda
+          : undefined
       );
+
+      burnNftPayloads.push({
+        instructions: [burnIx],
+        addresses: [nfts[i].tokenAddress],
+      });
     } else {
       // else, we can only burn it the traditional way
-      burnTokenIxs.push(...burnToken(payer, tokenAccount, mint));
+      // via burning the token and closing the account manually
+      burnTokenPayloads.push({
+        instructions: burnToken(payer, tokenAccount, mint),
+        addresses: [nfts[i].tokenAddress],
+      });
     }
   }
 
-  const burnTxs: Transaction[] = bundleIxsIntoTxArray(burnNftIxs, 6);
-  const burnTokenTxs: Transaction[] = bundleIxsIntoTxArray(burnTokenIxs, 11);
   return await finalizeTransactions(
     connection,
-    [...burnTxs, ...burnTokenTxs],
+    [
+      ...bundleIxsIntoTxArray(burnNftPayloads, 6),
+      ...bundleIxsIntoTxArray(burnTokenPayloads, 11),
+    ],
     payer
   );
 }

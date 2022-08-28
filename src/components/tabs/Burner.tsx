@@ -1,13 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { styled, Typography } from "@mui/material";
 import Box from "@mui/material/Box";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
-import {
-  HeliusNftCollection,
-  HeliusNFTData,
-  HeliusNFTPortfolio,
-} from "../../types";
-import { getNftPortfolio } from "../../api";
+import { HeliusNftCollection, HeliusNFTData } from "../../types";
 import {
   CONFIRM_DIALOG_TEXT,
   createBurnNftTxs,
@@ -15,7 +10,10 @@ import {
 } from "../../utils";
 import { NFTCollection } from "../NFTCollection";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { useSnackbar } from "notistack";
+import { useSnackbar, SnackbarKey } from "notistack";
+import { SOL_PER_NFT } from "../../utils";
+import { useNftPortfolio } from "../../hooks";
+import { TxExplorerLink } from "../OutsideLink";
 
 const NFTContainer = styled("div")({
   height: "100%",
@@ -63,6 +61,14 @@ const SmallAction = styled("button")({
   cursor: "pointer",
 });
 
+const SmallActionContainer = styled(Box)({
+  display: "flex",
+  flexDirection: "row",
+  gap: "4px",
+  marginLeft: "auto",
+  marginBottom: "8px",
+});
+
 export const ErrorMessage = (
   <span>
     Something went wrong. Let me know on{" "}
@@ -78,79 +84,21 @@ export const ErrorMessage = (
   </span>
 );
 
-const solPerNft = 0.010508;
-
 function Burner() {
   const { connection } = useConnection();
   const wallet = useWallet();
   const { setVisible } = useWalletModal();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
 
+  const {
+    nftPortfolio,
+    isFetchingNfts,
+    refreshPortfolio,
+    clearNftsFromPortfolio,
+  } = useNftPortfolio(wallet?.publicKey);
+
   const [selected, setSelected] = useState<string[]>([]);
-  const [portfolioData, setPortfolioData] = useState<HeliusNftCollection>({});
-  const [isFetching, setFetching] = useState<boolean>(false);
   const [isBurning, setBurning] = useState<boolean>(false);
-
-  // refreshes the portfolio of the current wallet
-  const refreshPortfolio = async (wallet: string) => {
-    setPortfolioData({});
-    setFetching(true);
-    const nftData: HeliusNFTPortfolio = await getNftPortfolio(wallet);
-
-    if (!nftData) {
-      enqueueSnackbar("Error fetching NFTs 💀", { variant: "error" });
-    }
-
-    // fetch all of the user's NFTs
-    if (nftData && nftData.numberOfPages > 1) {
-      // get all other pages starting from page 2
-      const rawData: PromiseSettledResult<
-        HeliusNFTPortfolio | { error: string }
-      >[] = await Promise.allSettled(
-        Array.from({ length: nftData.numberOfPages }, (_, i) => ++i)
-          .slice(1)
-          .map(async (page) => await getNftPortfolio(wallet, page))
-      );
-
-      // filter responses to those with actual nft data
-      const restOfData: HeliusNFTPortfolio[] = (
-        rawData.filter(
-          (data) =>
-            data.status === "fulfilled" && data.value.hasOwnProperty("nfts")
-        ) as PromiseFulfilledResult<HeliusNFTPortfolio>[]
-      ).map((data) => data.value);
-
-      // collate nft data to nftData.nft
-      restOfData.forEach((data) => {
-        nftData.nfts.push(...data.nfts);
-      });
-
-      // show error if needed
-      if (restOfData.length + 1 < nftData.numberOfPages) {
-        enqueueSnackbar("Couldn't fetch all NFTs. Probably got rate-limited.", {
-          variant: "warning",
-        });
-      }
-    }
-    if (nftData.nfts) {
-      const groupedNftData = nftData.nfts.reduce(function (group, value) {
-        if (!group[value.collectionAddress]) {
-          group[value.collectionAddress] = [];
-        }
-        group[value.collectionAddress].push(value);
-        return group;
-      }, {} as HeliusNftCollection);
-      setPortfolioData(groupedNftData);
-    }
-    setFetching(false);
-  };
-
-  // everytime wallet is changed, refresh portfolio data
-  useEffect(() => {
-    if (wallet.publicKey) {
-      refreshPortfolio(wallet.publicKey.toBase58());
-    }
-  }, [wallet.publicKey]);
 
   // toggles all mints that are passed down
   const toggleSelected = (selected: string[], mints: string[]) => {
@@ -167,25 +115,24 @@ function Burner() {
 
   // handler for "Burn" button
   const handleDelete = async (
-    portfolioData: HeliusNftCollection,
+    nftPortfolio: HeliusNftCollection,
     mints: string[]
   ) => {
     if (!wallet.signAllTransactions) throw Error("Wallet adapter error");
+    if (mints.length === 0) throw Error("No NFTs selected");
 
     if (
-      wallet &&
       connection &&
-      wallet.publicKey &&
+      wallet?.publicKey &&
       window.confirm(CONFIRM_DIALOG_TEXT) === true
     ) {
       // flatten portfolio data into one array of nft data
-      const flattenedData = Object.keys(portfolioData).reduce(
-        (data, value) => data.concat(...portfolioData[value]),
-        [] as HeliusNFTData[]
-      );
-
-      // get data of all selected nfts
-      const list = flattenedData
+      // and then filter to selected NFTs only
+      const nftsToBurn = Object.keys(nftPortfolio)
+        .reduce(
+          (data, value) => data.concat(...nftPortfolio[value]),
+          [] as HeliusNFTData[]
+        )
         .filter((nft) => mints.includes(nft.tokenAddress))
         .map((nft) => {
           return {
@@ -194,69 +141,133 @@ function Burner() {
           };
         });
 
-      // create burn transactions
-      const burnTxs = await createBurnNftTxs(
-        connection,
-        wallet.publicKey,
-        list
-      );
+      let sendNotifKey: SnackbarKey = "";
 
       try {
         setBurning(true);
 
-        // sign transactions
-        await wallet.signAllTransactions(burnTxs);
+        // create burn transactions
+        const burnTxs = await createBurnNftTxs(
+          connection,
+          wallet.publicKey,
+          nftsToBurn
+        );
 
-        const key = enqueueSnackbar(`Sending transactions...`);
+        // sign all transactions
+        await wallet.signAllTransactions(burnTxs.map((tx) => tx.transaction));
 
-        // send all transactions once signed
-        await Promise.all(
+        // tell users that transactions are being sent
+        // call closeSnackbar(key) to close the notification
+        sendNotifKey = enqueueSnackbar(
+          `Sending ${burnTxs.length} transaction${
+            burnTxs.length > 0 ? "s" : ""
+          }...`,
+          {
+            persist: true,
+          }
+        );
+
+        // send transactions once everything is signed
+        await Promise.allSettled(
           burnTxs.map(
-            async (tx) =>
-              await sendAndConfirmRawTransaction(connection, tx, {
-                skipPreflight: true,
-                preflightCommitment: "processed",
-                maxRetries: 2,
-              })
+            async (payload) =>
+              await sendAndConfirmRawTransaction(
+                connection,
+                payload.transaction,
+                {
+                  skipPreflight: true,
+                  preflightCommitment: "processed",
+                  maxRetries: 2,
+                }
+              )
           )
         )
           .then((signatures) => {
-            closeSnackbar(key);
-            enqueueSnackbar(`Successfully burned ${mints.length} NFTs. ✨`, {
-              variant: "success",
-            });
+            // print signatures and close transaction send message
             console.log("Signatures", signatures);
-            const cloned = structuredClone(
-              portfolioData
-            ) as HeliusNftCollection;
 
-            const newPortfolioData: HeliusNftCollection = {};
+            const { mintsToClear, mintsToStay, failed } = signatures.reduce(
+              (data, result, index) => {
+                if (result.status === "fulfilled") {
+                  data.mintsToClear.push(...burnTxs[index].addresses);
+                } else {
+                  data.mintsToStay.push(...burnTxs[index].addresses);
+                  if (result.reason.message.length > 0) {
+                    const errorMsgArr = result.reason.message.split(" ");
+                    if (errorMsgArr.length > 1) {
+                      data.failed.push(errorMsgArr[1]);
+                    }
+                  }
+                }
+                return data;
+              },
+              { mintsToClear: [], mintsToStay: [], failed: [] } as {
+                mintsToClear: string[];
+                mintsToStay: string[];
+                failed: string[];
+              }
+            );
 
-            // remove all nfts that are already in the mint array
-            Object.keys(cloned).forEach((key) => {
-              const newArray = cloned[key].filter(
-                (nft) => !mints.includes(nft.tokenAddress)
+            // close "Sending Transactions" notifications
+            closeSnackbar(sendNotifKey);
+
+            // show number of successfully burned NFTs, if any
+            if (mintsToClear.length > 0) {
+              enqueueSnackbar(
+                `Successfully burned ${mintsToClear.length} NFT${
+                  mintsToClear.length > 1 ? "s" : ""
+                }`,
+                {
+                  variant: "success",
+                }
               );
-              if (newArray.length > 0) newPortfolioData[key] = newArray;
-            });
+            }
 
-            // clear data
-            setPortfolioData(newPortfolioData);
+            // show number of failed to burn NFTs, if any
+            if (mintsToStay.length > 0) {
+              const mainText = `Failed to burned ${mintsToStay.length} NFT${
+                mintsToStay.length > 1 ? "s" : ""
+              }. TXs: [`;
+
+              const errorLinks = failed.map((tx, idx) => (
+                <>
+                  {idx > 0 && `, `}
+                  <TxExplorerLink signature={tx} key={tx}>
+                    {idx}
+                  </TxExplorerLink>
+                </>
+              ));
+
+              enqueueSnackbar(
+                <span>
+                  {mainText}
+                  {errorLinks}
+                  {`]`}
+                </span>,
+                {
+                  variant: "error",
+                  autoHideDuration: 10000,
+                }
+              );
+            }
+
+            clearNftsFromPortfolio(mintsToClear);
             setSelected([]);
           })
           .catch((err) => {
-            closeSnackbar(key);
+            closeSnackbar(sendNotifKey);
             enqueueSnackbar(ErrorMessage, { variant: "error" });
             console.error("Error:", err);
-          })
-          .finally(() => setBurning(false));
+          });
       } catch (error) {
+        closeSnackbar(sendNotifKey);
         if (
           error instanceof Error &&
           !error.message.startsWith("User rejected the request.")
         ) {
           enqueueSnackbar(ErrorMessage, { variant: "error" });
         }
+      } finally {
         setBurning(false);
       }
     }
@@ -264,18 +275,12 @@ function Burner() {
 
   return (
     <>
-      <Box
-        display="flex"
-        flexDirection="row"
-        gap="4px"
-        marginLeft="auto"
-        marginBottom="8px"
-      >
+      <SmallActionContainer>
         <SmallAction
-          disabled={!wallet.connected || isFetching || isBurning}
+          disabled={!wallet.connected || isFetchingNfts || isBurning}
           onClick={() => {
-            const flattenedData = Object.keys(portfolioData).reduce(
-              (data, value) => data.concat(...portfolioData[value]),
+            const flattenedData = Object.keys(nftPortfolio).reduce(
+              (data, value) => data.concat(...nftPortfolio[value]),
               [] as HeliusNFTData[]
             );
             setSelected(flattenedData.map((nft) => nft.tokenAddress));
@@ -284,30 +289,23 @@ function Burner() {
           Select All
         </SmallAction>
         <SmallAction
-          disabled={!wallet.connected || isFetching || isBurning}
+          disabled={!wallet.connected || isFetchingNfts || isBurning}
           onClick={() => setSelected([])}
         >
           Reset
         </SmallAction>
         <SmallAction
-          disabled={!wallet.connected || isFetching || isBurning}
-          onClick={() => refreshPortfolio(wallet.publicKey!.toBase58())}
+          disabled={!wallet.connected || isFetchingNfts || isBurning}
+          onClick={() => refreshPortfolio()}
         >
           Refresh
         </SmallAction>
-      </Box>
+      </SmallActionContainer>
       <ControlPanel>
-        <Box
-          sx={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            background: "transparent",
-          }}
-        >
+        <Box display="flex" flex="1" alignItems="center">
           {wallet.connected
             ? `You have selected ${selected.length} NFTs worth around ~${(
-                selected.length * solPerNft
+                selected.length * SOL_PER_NFT
               ).toFixed(4)} SOL.`
             : "Connect your wallet first to start burning NFTs."}
         </Box>
@@ -315,13 +313,13 @@ function Burner() {
           <BurnButton
             onClick={() =>
               wallet.connected
-                ? handleDelete(portfolioData, selected)
+                ? handleDelete(nftPortfolio, selected)
                 : setVisible(true)
             }
           >
             {wallet.connected
               ? !isBurning
-                ? !isFetching
+                ? !isFetchingNfts
                   ? `🔥 Burn ${
                       selected.length > 0 ? selected.length + " " : ""
                     }NFTs`
@@ -333,12 +331,12 @@ function Burner() {
       </ControlPanel>
       {wallet.connected && (
         <NFTContainer>
-          {Object.keys(portfolioData).length > 0 ? (
-            Object.keys(portfolioData).map((collection) => (
+          {Object.keys(nftPortfolio).length > 0 ? (
+            Object.keys(nftPortfolio).map((collection) => (
               <NFTCollection
-                nftList={portfolioData[collection]}
+                nftList={nftPortfolio[collection]}
                 handleClick={(mints: string[]) =>
-                  !isBurning && !isFetching
+                  !isBurning && !isFetchingNfts
                     ? toggleSelected(selected, mints)
                     : {}
                 }
@@ -348,7 +346,7 @@ function Burner() {
             ))
           ) : (
             <Typography align="center">
-              {!isFetching ? "No NFTs found." : "Loading..."}
+              {!isFetchingNfts ? "No NFTs found." : "Loading..."}
             </Typography>
           )}
         </NFTContainer>

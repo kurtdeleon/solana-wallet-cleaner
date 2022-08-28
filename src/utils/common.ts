@@ -4,6 +4,7 @@ import {
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
+import { InstructionPayload, TransactionPayload } from "../types";
 
 export function shortenAddress(address: string) {
   if (address.length > 4) {
@@ -16,31 +17,41 @@ export function shortenAddress(address: string) {
 
 export async function finalizeTransactions(
   connection: Connection,
-  transactions: Transaction[],
+  transactions: TransactionPayload[],
   feePayer: PublicKey
 ) {
   const { blockhash, lastValidBlockHeight } =
     await connection.getLatestBlockhash();
 
-  transactions.forEach((tx) => {
-    tx.feePayer = feePayer;
-    tx.recentBlockhash = blockhash;
-    tx.lastValidBlockHeight = lastValidBlockHeight;
+  transactions.forEach((payload) => {
+    payload.transaction.feePayer = feePayer;
+    payload.transaction.recentBlockhash = blockhash;
+    payload.transaction.lastValidBlockHeight = lastValidBlockHeight;
   });
 
   return transactions;
 }
 
 export function bundleIxsIntoTxArray(
-  instructions: TransactionInstruction[],
+  instructions: InstructionPayload[],
   maxPerTransaction: number
 ) {
-  const transactions: Transaction[] = [];
+  const transactions: TransactionPayload[] = [];
 
   while (instructions.length > 0) {
-    transactions.push(
-      new Transaction().add(...instructions.splice(0, maxPerTransaction))
+    const ixs = instructions.splice(0, maxPerTransaction);
+    const payload: TransactionPayload = ixs.reduce(
+      (txPayload, ix) => {
+        txPayload.transaction.add(...ix.instructions);
+        txPayload.addresses.push(...ix.addresses);
+        return txPayload;
+      },
+      {
+        transaction: new Transaction(),
+        addresses: [] as string[],
+      }
     );
+    transactions.push(payload);
   }
 
   return transactions;
