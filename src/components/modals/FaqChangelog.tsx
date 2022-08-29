@@ -87,7 +87,7 @@ export const FaqChangelog: FC<Props> = ({ open, handleClose }) => {
               <List>
                 {log.changes.map((change) => (
                   <ListItem
-                    key={change.substring(0, 10)}
+                    key={Buffer.from(change, "base64").toString()}
                     dangerouslySetInnerHTML={{ __html: change }}
                   />
                 ))}

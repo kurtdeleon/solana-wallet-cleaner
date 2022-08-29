@@ -1,20 +1,16 @@
 import { useState } from "react";
-import { Typography } from "@mui/material";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { Typography, styled } from "@mui/material";
+import Button from "@mui/material/Button";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
+import QuizIcon from "@mui/icons-material/Quiz";
 import { TabPanel } from "./components/TabPanel";
 import Burner from "./components/tabs/Burner";
 import AccountCloser from "./components/tabs/AccountCloser";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { styled } from "@mui/material";
 import { FaqChangelog } from "./components/modals";
-
-const Link = styled("a")({
-  fontWeight: "bold",
-  textDecoration: "none",
-});
 
 interface StyledTabsProps {
   children?: React.ReactNode;
@@ -70,10 +66,46 @@ const StyledTab = styled((props: StyledTabProps) => (
   },
 }));
 
-const FAQSpan = styled("span")({
+const FAQButton = styled(Button)({
   cursor: "pointer",
   color: "#364277",
   fontWeight: "bold",
+  height: "32px",
+  textTransform: "none",
+  letterSpacing: "normal",
+});
+
+const MainBox = styled(Box)({
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  flexDirection: "column",
+  padding: "1rem 0",
+  marginTop: "1rem",
+});
+
+const SmallHeader = styled(Box)({
+  display: "flex",
+  flexWrap: "wrap",
+  width: "95%",
+  maxWidth: "900px",
+  height: "80%",
+  maxHeight: "600px",
+  alignItems: "center",
+  marginBottom: "8px",
+  justifyContent: "space-between",
+});
+
+const Title = styled(Typography)({
+  fontWeight: "bold",
+  fontSize: "30px",
+  textAlign: "center",
+});
+
+const Link = styled("a")({
+  fontWeight: "bold",
+  textDecoration: "none",
+  color: "rgb(37, 46, 83)",
 });
 
 function Home() {
@@ -81,55 +113,28 @@ function Home() {
   const [showFaqs, setShowFaqs] = useState<boolean>(false);
 
   return (
-    <Box
-      bgcolor="background.default"
-      display="flex"
-      justifyContent="center"
-      alignItems="center"
-      flexDirection="column"
-      paddingY="1rem"
-      marginTop="1rem"
-    >
+    <MainBox bgcolor="background.default">
       <FaqChangelog open={showFaqs} handleClose={() => setShowFaqs(false)} />
-      <Box marginBottom="12px">
-        <Typography
-          color="primary.dark"
-          variant="h1"
-          fontWeight="bold"
-          fontSize={30}
-          align="center"
-        >
+      <Box marginBottom="12px" paddingX="8px">
+        <Title color="primary.dark" variant="h1" marginBottom="4px">
           Solana Wallet Tools
+        </Title>
+        <Typography align="center" paddingY="4px">
+          Burn NFTs and close token accounts for more SOL to mint rugs with.
         </Typography>
-        <Typography align="center">
-          Burn NFTs and close token accounts for more SOL to mint rugs with.{" "}
-          <FAQSpan role="button" onClick={() => setShowFaqs(true)}>
-            Read FAQs here.
-          </FAQSpan>
+        <Typography align="center" fontSize="0.9rem">
+          Created by{" "}
+          <Link href="https://twitter.com/i__am__water">@i__am__water</Link>.
+          Powered by{" "}
+          <Link href="https://twitter.com/heliuslabs">@heliuslabs</Link>.
         </Typography>
       </Box>
-      <Box
-        display="flex"
-        flexWrap="wrap"
-        width="95%"
-        maxWidth="900px"
-        height="80%"
-        maxHeight="600px"
-        alignItems="base"
-        marginBottom="8px"
-      >
-        <Box sx={{ flex: 1 }} display="flex" alignItems="end">
-          <Typography fontSize={14}>
-            Made by{" "}
-            <Link href="https://twitter.com/i__am__water">@i__am__water</Link>.
-            Powered by{" "}
-            <Link href="https://twitter.com/heliuslabs">@heliuslabs</Link>.
-          </Typography>
-        </Box>
-        <Box>
-          <WalletMultiButton />
-        </Box>
-      </Box>
+      <SmallHeader>
+        <FAQButton onClick={() => setShowFaqs(true)} startIcon={<QuizIcon />}>
+          FAQs & Changelog
+        </FAQButton>
+        <WalletMultiButton />
+      </SmallHeader>
       <Paper
         elevation={3}
         sx={{
@@ -165,7 +170,7 @@ function Home() {
           <Burner />
         </TabPanel> */}
       </Paper>
-    </Box>
+    </MainBox>
   );
 }
 

@@ -1,6 +1,6 @@
+import { useMemo, useState } from "react";
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import { createTheme } from "@mui/material/styles";
-import Home from "./Home";
 import {
   ConnectionProvider,
   WalletProvider,
@@ -15,10 +15,9 @@ import {
   ExodusWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import { useMemo } from "react";
 import { SnackbarProvider } from "notistack";
-import { useState } from "react";
 import { InitialWarning } from "./components/modals";
+import Home from "./Home";
 
 function App() {
   const [showWarning, setShowWarning] = useState<boolean>(
