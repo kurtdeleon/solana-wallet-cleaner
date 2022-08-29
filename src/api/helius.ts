@@ -1,4 +1,4 @@
-import { HeliusNftCollection, HeliusNFTPortfolio } from "../types";
+import { HeliusNFTPortfolio } from "../types";
 
 export async function getNftMetadata(mintAccounts: string[]) {
   return fetch(

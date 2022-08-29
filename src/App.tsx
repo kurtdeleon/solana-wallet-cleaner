@@ -18,9 +18,7 @@ import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { useMemo } from "react";
 import { SnackbarProvider } from "notistack";
 import { useState } from "react";
-import { InitialWarningDialog } from "./components/Modals";
-
-import "./App.css";
+import { InitialWarning } from "./components/modals";
 
 function App() {
   const [showWarning, setShowWarning] = useState<boolean>(
@@ -68,7 +66,7 @@ function App() {
         <WalletProvider wallets={wallets} autoConnect>
           <WalletModalProvider>
             <SnackbarProvider maxSnack={5}>
-              <InitialWarningDialog
+              <InitialWarning
                 open={showWarning}
                 handleClose={() => setShowWarning(false)}
               />

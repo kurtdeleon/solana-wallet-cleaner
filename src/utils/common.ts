@@ -1,9 +1,4 @@
-import {
-  Connection,
-  PublicKey,
-  Transaction,
-  TransactionInstruction,
-} from "@solana/web3.js";
+import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import { InstructionPayload, TransactionPayload } from "../types";
 
 export function shortenAddress(address: string) {

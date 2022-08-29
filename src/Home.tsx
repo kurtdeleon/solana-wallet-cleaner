@@ -9,7 +9,7 @@ import Burner from "./components/tabs/Burner";
 import AccountCloser from "./components/tabs/AccountCloser";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { styled } from "@mui/material";
-import { FAQDialog } from "./components/Modals";
+import { FaqChangelog } from "./components/modals";
 
 const Link = styled("a")({
   fontWeight: "bold",
@@ -90,7 +90,7 @@ function Home() {
       paddingY="1rem"
       marginTop="1rem"
     >
-      <FAQDialog open={showFaqs} handleClose={() => setShowFaqs(false)} />
+      <FaqChangelog open={showFaqs} handleClose={() => setShowFaqs(false)} />
       <Box marginBottom="12px">
         <Typography
           color="primary.dark"
