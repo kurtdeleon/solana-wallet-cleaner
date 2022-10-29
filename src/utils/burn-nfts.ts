@@ -66,6 +66,7 @@ export async function createBurnNftTxs(
   nfts: Pick<HeliusNFTData, "tokenAddress" | "collectionAddress">[]
 ): Promise<TransactionPayload[]> {
   const { collection, edition } = await getVerifiedAddresses(connection, nfts);
+  // console.log("collection", collection.map((add)=>add.toBase58()));
 
   // create burn nft ixs per nft selected
   const burnNftPayloads: InstructionPayload[] = [];
@@ -81,13 +82,18 @@ export async function createBurnNftTxs(
     if (edition.findIndex((value) => value.equals(editionPda)) > -1) {
       const collectionPda = getMetadataPda(
         new PublicKey(nfts[i].collectionAddress)
-      );
-
+      ); 
+      // const test = await connection.getTokenAccountBalance(new PublicKey(nfts[i].collectionAddress));
+      const test = await connection.getAccountInfo(new PublicKey(nfts[i].collectionAddress));
+      console.log("test", test);
+      console.log("collectionMain", nfts[i].collectionAddress)
+      console.log("collectionPda", collectionPda.toBase58());
       const burnIx = burnNft(
         payer,
         mint,
         editionPda,
         tokenAccount,
+        // collectionPda
         collection.findIndex((address) => address.equals(collectionPda)) > -1
           ? collectionPda
           : undefined
@@ -139,6 +145,8 @@ export function burnNft(
   // const collectionMetadataPda = collectionMint
   //   ? getMetadataPda(collectionMint)
   //   : undefined;
+
+  if ( collectionMetadataPda ) console.log("collection", collectionMetadataPda.toBase58());
 
   // main burn transaction that deletes the NFT
   return createBurnNftInstruction(

@@ -55,7 +55,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <ConnectionProvider
-        endpoint="https://ssc-dao.genesysgo.net/"
+        endpoint={`https://mainnet-beta.solflare.network/`}
         config={{
           confirmTransactionInitialTimeout: 30000,
           commitment: "processed",
