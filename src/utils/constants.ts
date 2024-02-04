@@ -11,7 +11,7 @@ export const FAQ_LIST = [
   {
     question: "I found a bug. How do I contact you?",
     answer:
-      'Send me a message over on <a href="https://twitter.com/i__am__water" target="_blank" rel="noopener noreferrer">Twitter</a>, or on Discord at <strong>water#2222</strong>. I will never message you first.',
+      'Open an issue over on <a href="https://github.com/kurtdeleon" target="_blank" rel="noopener noreferrer">Github</a>. I will never message you first.',
   },
   {
     question:

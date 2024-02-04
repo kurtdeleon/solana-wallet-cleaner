@@ -124,9 +124,8 @@ function Home() {
         </Typography>
         <Typography align="center" fontSize="0.9rem">
           Created by{" "}
-          <Link href="https://twitter.com/i__am__water">@i__am__water</Link>.
-          Powered by{" "}
-          <Link href="https://twitter.com/heliuslabs">@heliuslabs</Link>.
+          <Link href="https://github.com/kurtdeleon">@kurtdeleon</Link>. Powered
+          by <Link href="https://twitter.com/heliuslabs">@heliuslabs</Link>.
         </Typography>
       </Box>
       <SmallHeader>

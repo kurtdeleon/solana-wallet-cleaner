@@ -51,12 +51,12 @@ export const ErrorMessage = (
   <span>
     Something went wrong. Let me know on{" "}
     <a
-      href="https://twitter.com/i__am__water"
+      href="https://github.com/kurtdeleon"
       target="_blank"
       rel="noopener noreferrer"
       style={{ color: "white", fontWeight: "bold", textDecoration: "none" }}
     >
-      Twitter
+      Github
     </a>
     .
   </span>
