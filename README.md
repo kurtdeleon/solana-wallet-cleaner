@@ -1,8 +1,8 @@
+> ### ⚠️ Disclaimer
+> Most of the Helius API calls are probably outdated by now as this is almost a year old project. That being said, I chose to publicize this repo anyway in case anyone finds the transaction generation codeblocks useful.
+
 # Solana Wallet Cleaner
 This dapp allows users to clean out useless NFTs and tokens from Solana wallets. Standard NFTs aren't the norm anymore since cNFTs came out but this can still clean out empty token accounts just fine. Inspired by [Sol-Incinerator](https://sol-incinerator.com/) as I wanted to create an alternative that didn't take any fees.
-
-## Disclaimer
-Most of the Helius API calls are probably outdated by now as this is almost a year old project. That being said, I chose to upload this anyway in case anyone finds the transaction generation codeblocks useful.
 
 ## Getting Started
 
